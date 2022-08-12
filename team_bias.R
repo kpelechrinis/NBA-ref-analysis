@@ -1,3 +1,5 @@
+library(vroom)
+library(xtable)
 ## simulation function
 
 empirical_netsim_team <- function(name, df, league_recall_call, n = 100){
