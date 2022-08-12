@@ -106,4 +106,5 @@ for (p in 1:length(players)){
   }
 }
 
+#table at figure 1D
 xtable(results.df)
