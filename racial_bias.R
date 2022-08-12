@@ -1,4 +1,4 @@
-pbp <- read.csv("/Users/kpele/Downloads/pbp.csv")
+pbp <- read.csv("pbp.csv")
 technicals <- c("Hanging Technical","Taunting Technical","Technical","Unsportsmanlike Technical")
 refs_race.df <- read.csv("refs.csv")
 players_race.df <- read.csv("player_race2.csv")
