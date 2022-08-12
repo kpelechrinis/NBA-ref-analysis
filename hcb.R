@@ -101,4 +101,5 @@ for (y in c("reg","playoffs","all")){
   }
 }
 
+# table at figure 1C
 xtable(results_home)
