@@ -141,4 +141,5 @@ for (b in 1:100){
 
 dat = data.frame(g=diff_sim-same_sim)
 observed_diff = as.numeric(48*(bw_n+wb_n)/(bw_min+wb_min))-as.numeric(48*(bb_n+ww_n)/(bb_min+ww_min))
+## figure 1E
 ggplot(dat, aes(x=g)) + geom_histogram(aes(y=..density..), binwidth=.5,colour="black", fill="white") +geom_density(alpha=.2, fill="#FF6666") +xlim(-0.001,0,0.004) + geom_vline(xintercept = observed_diff,color="red")+labs(x="g")
