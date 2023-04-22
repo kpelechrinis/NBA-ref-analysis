@@ -9,6 +9,7 @@ empirical_netsim2 <- function(name, df, league_recall_call, n = 100){
   df_tmp2 = df[which(df$disadvantaged_side==name),]
   sims <- rep(0,n)
   for (i in 1:n){
+    print(paste0("sampled ", i, " at ", Sys.time()))
     s = 0
     s2 = 0
     for (v in 1:dim(df_tmp)[1]){
@@ -95,6 +96,7 @@ for (y in c("reg","playoffs","all")){
     ic2 = t_real_tmp1[which(t_real_tmp1$Var1=="IC"),]$Freq
     if (length(ic2) ==0){ic2 =0}
     t_real = (inc1+ic1) - (inc2+ic2)
+    set.seed(324)
     t_sim <- empirical_netsim2(p,df=df_3y,league_recall_call,n=100)
     emp_pval = length(which(t_sim>=t_real))/100
     results_home <- rbind(results_home,data.frame(team=p,season=y,pval=emp_pval,effect=t_real-mean(t_sim),size=dim(df_3y)[1]))
