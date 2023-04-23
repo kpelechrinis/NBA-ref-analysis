@@ -65,7 +65,7 @@ df_3y = df_3y[as.character(df_3y$decision)!="CNC",]
 teams = unique(c(df_3y$disadvantaged_team,df_3y$committing_team))
 results.df <- data.frame(team=c(),pval = c(), effect = c(), size = c())
 
-for (p in 1:length(players)){
+for (p in 1:length(teams)){
   # this condition obviously is always true
   if (dim(df_3y[which(df_3y$committing_team == teams[p]),])[1]+dim(df_3y[which(df_3y$disadvantaged_team == teams[p]),])[1]>100){
     league_recall_call = data.frame(violation=c(),p1=c(),p2=c())
