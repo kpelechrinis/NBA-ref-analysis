@@ -1,0 +1,433 @@
+> library(vroom)
+> library(xtable)
+> ## simulation function 
+> 
+> empirical_netsim2 <- function(name, df, league_recall_call, n = 100){
++   LEAGUE_AVG_recall = 0.22 ## from data
++   LEAGUE_AVG_precision = 0.31 ## from data
++   df_tmp = df[which(df$committing_side==name),]
++   df_tmp2 = df[which(df$disadvantaged_side==name),]
++   sims <- rep(0,n)
++   for (i in 1:n){
++     print(paste0("sampled ", i, " at ", Sys.time()))
++     s = 0
++     s2 = 0
++     for (v in 1:dim(df_tmp)[1]){
++       if (length(which(league_recall_call$violation==df_tmp[v,]$call_type))>0){
++         tmp_r = runif(1)
++         if (tmp_r < league_recall_call[which(league_recall_call$violation==df_tmp[v,]$call_type),]$p1){
++           s = s+1
++         }else{
++           if (tmp_r < league_recall_call[which(league_recall_call$violation==df_tmp[v,]$call_type),]$p2){
++             s2 = s2+1
++           }
++         }
++       }else{
++         tmp_r = runif(1)
++         if (tmp_r < LEAGUE_AVG_recall){
++           s = s + 1
++         }else{
++           if (tmp_r < LEAGUE_AVG_precision){
++             s2 = s2 + 1
++           }
++         }
++       }
++     }
++     #s2 = 0 
++     for (v in 1:dim(df_tmp2)[1]){
++       if (length(which(league_recall_call$violation==df_tmp2[v,]$call_type))>0){
++         tmp_r = runif(1)
++         if (tmp_r < league_recall_call[which(league_recall_call$violation==df_tmp2[v,]$call_type),]$p1){
++           s2 = s2+1
++         }else{
++           if (tmp_r < league_recall_call[which(league_recall_call$violation==df_tmp2[v,]$call_type),]$p2){
++             s = s+1
++           }
++         }
++       }else{
++         tmp_r = runif(1)
++         if (runif(1) < LEAGUE_AVG_recall){
++           s2 = s2 + 1
++         }else{
++           if (tmp_r < LEAGUE_AVG_precision){
++             s= s+1
++           }
++         }
++       }
++     }
++     sims[i] = s-s2
++   }
++   return(sims)
++ }
+> 
+> ## 
+> 
+> df_ <- vroom("https://raw.githubusercontent.com/atlhawksfanatic/L2M/master/1-tidy/L2M/L2M.csv")
+Rows: 74144 Columns: 42                                                         
+── Column specification ──────────────────────────────────────────────────────────
+Delimiter: ","
+chr  (28): period, call_type, committing, disadvantaged, decision, comments, g...
+dbl  (10): page, away_score, home_score, attendance, committing_min, disadvant...
+lgl   (1): playoff
+dttm  (1): scrape_time
+date  (1): date
+time  (1): time
+
+ℹ Use `spec()` to retrieve the full column specification for this data.
+ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+> df_ = df_[which(!is.na(df_$decision)),]
+> df_ = df_[as.character(df_$decision)!="CNC",]
+> results_home <- data.frame(team=c(),season=c(),pval=c(),effect = c(), size=c())
+> for (y in c("reg","playoffs","all")){
++   for (p in c("home")){
++     league_recall_call = data.frame(violation=c(),p1=c(), p2=c())
++     if (y=="reg"){df_3y = df_[df_$playoff==FALSE ,]}
++     if (y == "playoffs"){df_3y = df_[df_$playoff==TRUE ,]}
++     if (y== "all"){df_3y = df_}
++     for (v in 1:length(unique(df_$call_type))){
++       tmp = df_[which(df_$call_type==unique(df_$call_type)[v]),]
++       if (dim(tmp)[1]>0){
++         tmptable = as.data.frame(table(tmp$decision))
++         cc = tmptable[which(tmptable$Var1=="CC"),]$Freq
++         if (length(cc) == 0){cc = 0}
++         inc = tmptable[which(tmptable$Var1=="INC"),]$Freq
++         if (length(inc)==0){inc = 0}
++         ic = tmptable[which(tmptable$Var1=="IC"),]$Freq
++         if (length(ic)==0){ic = 0}
++         league_recall_call <- rbind(league_recall_call,data.frame(violation=unique(df_$call_type)[v],p1=inc/(inc+cc+ic),p2 = (ic+inc)/(ic+cc+inc)))
++       }
++     }
++     t_real_tmp1 = as.data.frame(table(df_3y[which(df_3y$committing_side == p),]$decision))
++     inc1 = t_real_tmp1[which(t_real_tmp1$Var1=="INC"),]$Freq
++     if (length(inc1)==0){inc1 = 0}
++     t_real_tmp2 = as.data.frame(table(df_3y[which(df_3y$disadvantaged_side == p),]$decision))
++     inc2 = t_real_tmp2[which(t_real_tmp2$Var1=="INC"),]$Freq
++     if (length(inc2)==0){inc2 = 0}
++     ic1 = t_real_tmp2[which(t_real_tmp2$Var1=="IC"),]$Freq
++     if (length(ic1) ==0){ic1 =0}
++     ic2 = t_real_tmp1[which(t_real_tmp1$Var1=="IC"),]$Freq
++     if (length(ic2) ==0){ic2 =0}
++     t_real = (inc1+ic1) - (inc2+ic2)
++     set.seed(324)
++     t_sim <- empirical_netsim2(p,df=df_3y,league_recall_call,n=100)
++     emp_pval = length(which(t_sim>=t_real))/100
++     results_home <- rbind(results_home,data.frame(team=p,season=y,pval=emp_pval,effect=t_real-mean(t_sim),size=dim(df_3y)[1]))
++   }
++ }
+[1] "sampled 1 at 2023-04-21 17:15:09"
+[1] "sampled 2 at 2023-04-21 17:16:17"
+[1] "sampled 3 at 2023-04-21 17:17:24"
+[1] "sampled 4 at 2023-04-21 17:18:32"
+[1] "sampled 5 at 2023-04-21 17:19:40"
+[1] "sampled 6 at 2023-04-21 17:20:47"
+[1] "sampled 7 at 2023-04-21 17:21:55"
+[1] "sampled 8 at 2023-04-21 17:23:03"
+[1] "sampled 9 at 2023-04-21 17:24:10"
+[1] "sampled 10 at 2023-04-21 17:25:18"
+[1] "sampled 11 at 2023-04-21 17:26:25"
+[1] "sampled 12 at 2023-04-21 17:27:33"
+[1] "sampled 13 at 2023-04-21 17:28:41"
+[1] "sampled 14 at 2023-04-21 17:29:49"
+[1] "sampled 15 at 2023-04-21 17:30:57"
+[1] "sampled 16 at 2023-04-21 17:32:05"
+[1] "sampled 17 at 2023-04-21 17:33:12"
+[1] "sampled 18 at 2023-04-21 17:34:20"
+[1] "sampled 19 at 2023-04-21 17:35:28"
+[1] "sampled 20 at 2023-04-21 17:36:35"
+[1] "sampled 21 at 2023-04-21 17:37:43"
+[1] "sampled 22 at 2023-04-21 17:38:51"
+[1] "sampled 23 at 2023-04-21 17:39:58"
+[1] "sampled 24 at 2023-04-21 17:41:06"
+[1] "sampled 25 at 2023-04-21 17:42:14"
+[1] "sampled 26 at 2023-04-21 17:43:22"
+[1] "sampled 27 at 2023-04-21 17:44:29"
+[1] "sampled 28 at 2023-04-21 17:45:37"
+[1] "sampled 29 at 2023-04-21 17:46:45"
+[1] "sampled 30 at 2023-04-21 17:47:52"
+[1] "sampled 31 at 2023-04-21 17:49:00"
+[1] "sampled 32 at 2023-04-21 17:50:07"
+[1] "sampled 33 at 2023-04-21 17:51:15"
+[1] "sampled 34 at 2023-04-21 17:52:23"
+[1] "sampled 35 at 2023-04-21 17:53:31"
+[1] "sampled 36 at 2023-04-21 17:54:39"
+[1] "sampled 37 at 2023-04-21 17:55:46"
+[1] "sampled 38 at 2023-04-21 17:56:54"
+[1] "sampled 39 at 2023-04-21 17:58:01"
+[1] "sampled 40 at 2023-04-21 17:59:09"
+[1] "sampled 41 at 2023-04-21 18:00:16"
+[1] "sampled 42 at 2023-04-21 18:01:24"
+[1] "sampled 43 at 2023-04-21 18:02:32"
+[1] "sampled 44 at 2023-04-21 18:03:40"
+[1] "sampled 45 at 2023-04-21 18:04:47"
+[1] "sampled 46 at 2023-04-21 18:05:55"
+[1] "sampled 47 at 2023-04-21 18:07:03"
+[1] "sampled 48 at 2023-04-21 18:08:10"
+[1] "sampled 49 at 2023-04-21 18:09:18"
+[1] "sampled 50 at 2023-04-21 18:10:25"
+[1] "sampled 51 at 2023-04-21 18:11:33"
+[1] "sampled 52 at 2023-04-21 18:12:41"
+[1] "sampled 53 at 2023-04-21 18:13:49"
+[1] "sampled 54 at 2023-04-21 18:14:56"
+[1] "sampled 55 at 2023-04-21 18:16:04"
+[1] "sampled 56 at 2023-04-21 18:17:12"
+[1] "sampled 57 at 2023-04-21 18:18:20"
+[1] "sampled 58 at 2023-04-21 18:19:28"
+[1] "sampled 59 at 2023-04-21 18:20:35"
+[1] "sampled 60 at 2023-04-21 18:21:43"
+[1] "sampled 61 at 2023-04-21 18:22:51"
+[1] "sampled 62 at 2023-04-21 18:23:58"
+[1] "sampled 63 at 2023-04-21 18:25:06"
+[1] "sampled 64 at 2023-04-21 18:26:14"
+[1] "sampled 65 at 2023-04-21 18:27:22"
+[1] "sampled 66 at 2023-04-21 18:28:30"
+[1] "sampled 67 at 2023-04-21 18:29:37"
+[1] "sampled 68 at 2023-04-21 18:30:44"
+[1] "sampled 69 at 2023-04-21 18:31:52"
+[1] "sampled 70 at 2023-04-21 18:33:00"
+[1] "sampled 71 at 2023-04-21 18:34:07"
+[1] "sampled 72 at 2023-04-21 18:35:15"
+[1] "sampled 73 at 2023-04-21 18:36:23"
+[1] "sampled 74 at 2023-04-21 18:37:30"
+[1] "sampled 75 at 2023-04-21 18:38:38"
+[1] "sampled 76 at 2023-04-21 18:39:46"
+[1] "sampled 77 at 2023-04-21 18:40:54"
+[1] "sampled 78 at 2023-04-21 18:42:01"
+[1] "sampled 79 at 2023-04-21 18:43:09"
+[1] "sampled 80 at 2023-04-21 18:44:16"
+[1] "sampled 81 at 2023-04-21 18:45:24"
+[1] "sampled 82 at 2023-04-21 18:46:32"
+[1] "sampled 83 at 2023-04-21 18:47:39"
+[1] "sampled 84 at 2023-04-21 18:48:47"
+[1] "sampled 85 at 2023-04-21 18:49:55"
+[1] "sampled 86 at 2023-04-21 18:51:03"
+[1] "sampled 87 at 2023-04-21 18:52:10"
+[1] "sampled 88 at 2023-04-21 18:53:18"
+[1] "sampled 89 at 2023-04-21 18:54:26"
+[1] "sampled 90 at 2023-04-21 18:55:33"
+[1] "sampled 91 at 2023-04-21 18:56:41"
+[1] "sampled 92 at 2023-04-21 18:57:49"
+[1] "sampled 93 at 2023-04-21 18:58:57"
+[1] "sampled 94 at 2023-04-21 19:00:04"
+[1] "sampled 95 at 2023-04-21 19:01:12"
+[1] "sampled 96 at 2023-04-21 19:02:20"
+[1] "sampled 97 at 2023-04-21 19:03:28"
+[1] "sampled 98 at 2023-04-21 19:04:35"
+[1] "sampled 99 at 2023-04-21 19:05:43"
+[1] "sampled 100 at 2023-04-21 19:06:50"
+[1] "sampled 1 at 2023-04-21 19:07:58"
+[1] "sampled 2 at 2023-04-21 19:08:01"
+[1] "sampled 3 at 2023-04-21 19:08:05"
+[1] "sampled 4 at 2023-04-21 19:08:08"
+[1] "sampled 5 at 2023-04-21 19:08:11"
+[1] "sampled 6 at 2023-04-21 19:08:14"
+[1] "sampled 7 at 2023-04-21 19:08:18"
+[1] "sampled 8 at 2023-04-21 19:08:21"
+[1] "sampled 9 at 2023-04-21 19:08:24"
+[1] "sampled 10 at 2023-04-21 19:08:27"
+[1] "sampled 11 at 2023-04-21 19:08:30"
+[1] "sampled 12 at 2023-04-21 19:08:33"
+[1] "sampled 13 at 2023-04-21 19:08:37"
+[1] "sampled 14 at 2023-04-21 19:08:40"
+[1] "sampled 15 at 2023-04-21 19:08:43"
+[1] "sampled 16 at 2023-04-21 19:08:46"
+[1] "sampled 17 at 2023-04-21 19:08:49"
+[1] "sampled 18 at 2023-04-21 19:08:52"
+[1] "sampled 19 at 2023-04-21 19:08:56"
+[1] "sampled 20 at 2023-04-21 19:08:59"
+[1] "sampled 21 at 2023-04-21 19:09:02"
+[1] "sampled 22 at 2023-04-21 19:09:05"
+[1] "sampled 23 at 2023-04-21 19:09:08"
+[1] "sampled 24 at 2023-04-21 19:09:11"
+[1] "sampled 25 at 2023-04-21 19:09:15"
+[1] "sampled 26 at 2023-04-21 19:09:18"
+[1] "sampled 27 at 2023-04-21 19:09:21"
+[1] "sampled 28 at 2023-04-21 19:09:24"
+[1] "sampled 29 at 2023-04-21 19:09:27"
+[1] "sampled 30 at 2023-04-21 19:09:30"
+[1] "sampled 31 at 2023-04-21 19:09:34"
+[1] "sampled 32 at 2023-04-21 19:09:37"
+[1] "sampled 33 at 2023-04-21 19:09:40"
+[1] "sampled 34 at 2023-04-21 19:09:43"
+[1] "sampled 35 at 2023-04-21 19:09:46"
+[1] "sampled 36 at 2023-04-21 19:09:49"
+[1] "sampled 37 at 2023-04-21 19:09:53"
+[1] "sampled 38 at 2023-04-21 19:09:56"
+[1] "sampled 39 at 2023-04-21 19:09:59"
+[1] "sampled 40 at 2023-04-21 19:10:02"
+[1] "sampled 41 at 2023-04-21 19:10:05"
+[1] "sampled 42 at 2023-04-21 19:10:08"
+[1] "sampled 43 at 2023-04-21 19:10:12"
+[1] "sampled 44 at 2023-04-21 19:10:15"
+[1] "sampled 45 at 2023-04-21 19:10:18"
+[1] "sampled 46 at 2023-04-21 19:10:21"
+[1] "sampled 47 at 2023-04-21 19:10:24"
+[1] "sampled 48 at 2023-04-21 19:10:27"
+[1] "sampled 49 at 2023-04-21 19:10:31"
+[1] "sampled 50 at 2023-04-21 19:10:34"
+[1] "sampled 51 at 2023-04-21 19:10:37"
+[1] "sampled 52 at 2023-04-21 19:10:40"
+[1] "sampled 53 at 2023-04-21 19:10:43"
+[1] "sampled 54 at 2023-04-21 19:10:46"
+[1] "sampled 55 at 2023-04-21 19:10:50"
+[1] "sampled 56 at 2023-04-21 19:10:53"
+[1] "sampled 57 at 2023-04-21 19:10:56"
+[1] "sampled 58 at 2023-04-21 19:10:59"
+[1] "sampled 59 at 2023-04-21 19:11:02"
+[1] "sampled 60 at 2023-04-21 19:11:05"
+[1] "sampled 61 at 2023-04-21 19:11:09"
+[1] "sampled 62 at 2023-04-21 19:11:12"
+[1] "sampled 63 at 2023-04-21 19:11:15"
+[1] "sampled 64 at 2023-04-21 19:11:18"
+[1] "sampled 65 at 2023-04-21 19:11:21"
+[1] "sampled 66 at 2023-04-21 19:11:24"
+[1] "sampled 67 at 2023-04-21 19:11:27"
+[1] "sampled 68 at 2023-04-21 19:11:31"
+[1] "sampled 69 at 2023-04-21 19:11:34"
+[1] "sampled 70 at 2023-04-21 19:11:37"
+[1] "sampled 71 at 2023-04-21 19:11:40"
+[1] "sampled 72 at 2023-04-21 19:11:43"
+[1] "sampled 73 at 2023-04-21 19:11:46"
+[1] "sampled 74 at 2023-04-21 19:11:50"
+[1] "sampled 75 at 2023-04-21 19:11:53"
+[1] "sampled 76 at 2023-04-21 19:11:56"
+[1] "sampled 77 at 2023-04-21 19:11:59"
+[1] "sampled 78 at 2023-04-21 19:12:02"
+[1] "sampled 79 at 2023-04-21 19:12:05"
+[1] "sampled 80 at 2023-04-21 19:12:09"
+[1] "sampled 81 at 2023-04-21 19:12:12"
+[1] "sampled 82 at 2023-04-21 19:12:15"
+[1] "sampled 83 at 2023-04-21 19:12:18"
+[1] "sampled 84 at 2023-04-21 19:12:21"
+[1] "sampled 85 at 2023-04-21 19:12:24"
+[1] "sampled 86 at 2023-04-21 19:12:28"
+[1] "sampled 87 at 2023-04-21 19:12:31"
+[1] "sampled 88 at 2023-04-21 19:12:34"
+[1] "sampled 89 at 2023-04-21 19:12:37"
+[1] "sampled 90 at 2023-04-21 19:12:40"
+[1] "sampled 91 at 2023-04-21 19:12:44"
+[1] "sampled 92 at 2023-04-21 19:12:47"
+[1] "sampled 93 at 2023-04-21 19:12:50"
+[1] "sampled 94 at 2023-04-21 19:12:53"
+[1] "sampled 95 at 2023-04-21 19:12:56"
+[1] "sampled 96 at 2023-04-21 19:12:59"
+[1] "sampled 97 at 2023-04-21 19:13:03"
+[1] "sampled 98 at 2023-04-21 19:13:06"
+[1] "sampled 99 at 2023-04-21 19:13:09"
+[1] "sampled 100 at 2023-04-21 19:13:12"
+[1] "sampled 1 at 2023-04-21 19:13:15"
+[1] "sampled 2 at 2023-04-21 19:13:50"
+[1] "sampled 3 at 2023-04-21 19:14:24"
+[1] "sampled 4 at 2023-04-21 19:14:59"
+[1] "sampled 5 at 2023-04-21 19:15:33"
+[1] "sampled 6 at 2023-04-21 19:16:08"
+[1] "sampled 7 at 2023-04-21 19:16:42"
+[1] "sampled 8 at 2023-04-21 19:17:17"
+[1] "sampled 9 at 2023-04-21 19:17:51"
+[1] "sampled 10 at 2023-04-21 19:18:25"
+[1] "sampled 11 at 2023-04-21 19:19:00"
+[1] "sampled 12 at 2023-04-21 19:19:34"
+[1] "sampled 13 at 2023-04-21 19:20:09"
+[1] "sampled 14 at 2023-04-21 19:20:43"
+[1] "sampled 15 at 2023-04-21 19:21:18"
+[1] "sampled 16 at 2023-04-21 19:21:52"
+[1] "sampled 17 at 2023-04-21 19:22:26"
+[1] "sampled 18 at 2023-04-21 19:23:01"
+[1] "sampled 19 at 2023-04-21 19:23:35"
+[1] "sampled 20 at 2023-04-21 19:24:10"
+[1] "sampled 21 at 2023-04-21 19:24:44"
+[1] "sampled 22 at 2023-04-21 19:25:19"
+[1] "sampled 23 at 2023-04-21 19:25:53"
+[1] "sampled 24 at 2023-04-21 19:26:27"
+[1] "sampled 25 at 2023-04-21 19:27:02"
+[1] "sampled 26 at 2023-04-21 19:27:36"
+[1] "sampled 27 at 2023-04-21 19:28:11"
+[1] "sampled 28 at 2023-04-21 19:28:45"
+[1] "sampled 29 at 2023-04-21 19:29:20"
+[1] "sampled 30 at 2023-04-21 19:29:54"
+[1] "sampled 31 at 2023-04-21 19:30:29"
+[1] "sampled 32 at 2023-04-21 19:31:03"
+[1] "sampled 33 at 2023-04-21 19:31:37"
+[1] "sampled 34 at 2023-04-21 19:32:12"
+[1] "sampled 35 at 2023-04-21 19:32:46"
+[1] "sampled 36 at 2023-04-21 19:33:21"
+[1] "sampled 37 at 2023-04-21 19:33:55"
+[1] "sampled 38 at 2023-04-21 19:34:30"
+[1] "sampled 39 at 2023-04-21 19:35:04"
+[1] "sampled 40 at 2023-04-21 19:35:39"
+[1] "sampled 41 at 2023-04-21 19:36:13"
+[1] "sampled 42 at 2023-04-21 19:36:48"
+[1] "sampled 43 at 2023-04-21 19:37:22"
+[1] "sampled 44 at 2023-04-21 19:37:57"
+[1] "sampled 45 at 2023-04-21 19:38:31"
+[1] "sampled 46 at 2023-04-21 19:39:05"
+[1] "sampled 47 at 2023-04-21 19:39:40"
+[1] "sampled 48 at 2023-04-21 19:40:14"
+[1] "sampled 49 at 2023-04-21 19:40:49"
+[1] "sampled 50 at 2023-04-21 19:41:23"
+[1] "sampled 51 at 2023-04-21 19:41:58"
+[1] "sampled 52 at 2023-04-21 19:42:32"
+[1] "sampled 53 at 2023-04-21 19:43:07"
+[1] "sampled 54 at 2023-04-21 19:43:41"
+[1] "sampled 55 at 2023-04-21 19:44:16"
+[1] "sampled 56 at 2023-04-21 19:44:50"
+[1] "sampled 57 at 2023-04-21 19:45:24"
+[1] "sampled 58 at 2023-04-21 19:45:59"
+[1] "sampled 59 at 2023-04-21 19:46:33"
+[1] "sampled 60 at 2023-04-21 19:47:08"
+[1] "sampled 61 at 2023-04-21 19:47:42"
+[1] "sampled 62 at 2023-04-21 19:48:16"
+[1] "sampled 63 at 2023-04-21 19:48:51"
+[1] "sampled 64 at 2023-04-21 19:49:25"
+[1] "sampled 65 at 2023-04-21 19:50:00"
+[1] "sampled 66 at 2023-04-21 19:50:34"
+[1] "sampled 67 at 2023-04-21 19:51:08"
+[1] "sampled 68 at 2023-04-21 19:51:43"
+[1] "sampled 69 at 2023-04-21 19:52:17"
+[1] "sampled 70 at 2023-04-21 19:52:52"
+[1] "sampled 71 at 2023-04-21 19:53:26"
+[1] "sampled 72 at 2023-04-21 19:54:01"
+[1] "sampled 73 at 2023-04-21 19:54:35"
+[1] "sampled 74 at 2023-04-21 19:55:10"
+[1] "sampled 75 at 2023-04-21 19:55:44"
+[1] "sampled 76 at 2023-04-21 19:56:18"
+[1] "sampled 77 at 2023-04-21 19:56:53"
+[1] "sampled 78 at 2023-04-21 19:57:27"
+[1] "sampled 79 at 2023-04-21 19:58:01"
+[1] "sampled 80 at 2023-04-21 19:58:36"
+[1] "sampled 81 at 2023-04-21 19:59:10"
+[1] "sampled 82 at 2023-04-21 19:59:45"
+[1] "sampled 83 at 2023-04-21 20:00:19"
+[1] "sampled 84 at 2023-04-21 20:00:54"
+[1] "sampled 85 at 2023-04-21 20:01:28"
+[1] "sampled 86 at 2023-04-21 20:02:03"
+[1] "sampled 87 at 2023-04-21 20:02:37"
+[1] "sampled 88 at 2023-04-21 20:03:11"
+[1] "sampled 89 at 2023-04-21 20:03:46"
+[1] "sampled 90 at 2023-04-21 20:04:20"
+[1] "sampled 91 at 2023-04-21 20:04:55"
+[1] "sampled 92 at 2023-04-21 20:05:29"
+[1] "sampled 93 at 2023-04-21 20:06:04"
+[1] "sampled 94 at 2023-04-21 20:06:38"
+[1] "sampled 95 at 2023-04-21 20:07:13"
+[1] "sampled 96 at 2023-04-21 20:07:47"
+[1] "sampled 97 at 2023-04-21 20:08:21"
+[1] "sampled 98 at 2023-04-21 20:08:56"
+[1] "sampled 99 at 2023-04-21 20:09:30"
+[1] "sampled 100 at 2023-04-21 20:10:04"
+> 
+> # table at figure 1C
+> xtable(results_home)
+% latex table generated in R 4.2.3 by xtable 1.8-4 package
+% Fri Apr 21 20:10:39 2023
+\begin{table}[ht]
+\centering
+\begin{tabular}{rllrrr}
+  \hline
+ & team & season & pval & effect & size \\ 
+  \hline
+1 & home & reg & 0.05 & 104.45 & 20803 \\ 
+  2 & home & playoffs & 0.00 & 50.23 & 1404 \\ 
+  3 & home & all & 0.02 & 143.06 & 22207 \\ 
+   \hline
+\end{tabular}
+\end{table}
