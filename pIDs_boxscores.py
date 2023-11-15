@@ -1,4 +1,5 @@
 import time
+import pandas as pd
 from nba_api.stats.endpoints import boxscoreadvancedv2
 from nba_api.stats.static import players
 
