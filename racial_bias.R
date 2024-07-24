@@ -59,7 +59,7 @@ wb_min=0
 bb_min=0
 bw_min = 0
 for (i in 1:dim(refs_race.df)[1]){
-  games_f= unique(pbp.df[pbp.df$ref == refs_race.df[i,]$Ref & pbp.df$game_id %in% games_added,]$game_id)
+  games_f= unique(pbp[pbp$ref == refs_race.df[i,]$Ref & pbp$game_id %in% games_added,]$game_id)
   for (g in 1:length(games_f)){
     bgame = boxscore_merge[boxscore_merge$GAME_ID==games_f[g],]
     if (refs_race.df[i,]$race=="white"){
@@ -98,7 +98,7 @@ for (i in 1:dim(refs_race.df)[1]){
   tmp = tech_counts[tech_counts$Var1 == refs_race.df[i,]$Ref,]
   if (dim(tmp)[1] > 0){
     refs_race.df[i,]$ntechs = tmp[1,]$Freq
-    refs_race.df[i,]$ngames = length(unique(pbp.df[pbp.df$ref == refs_race.df[i,]$Ref,]$game_id))
+    refs_race.df[i,]$ngames = length(unique(pbp[pbp$ref == refs_race.df[i,]$Ref,]$game_id))
   }
 }
 refs_race.df$tech_rate = refs_race.df$ntechs/refs_race.df$ngames
@@ -118,7 +118,7 @@ for (b in 1:100){
     if (dim(box_tmp)[1] == 0){
       next
     }
-    refs = unique(pbp.df[pbp.df$game_id==gid & pbp.df$ref!="",]$ref)
+    refs = unique(pbp[pbp$game_id==gid & pbp$ref!="",]$ref)
     for (r in 1:length(refs)){
       if (runif(1) < refs_race.df[refs_race.df$Ref==refs[r],]$tech_rate){
         tech_sim.df <- rbind(tech_sim.df,data.frame(ref_race = refs_race.df[refs_race.df$Ref==refs[r],]$race , p_race = sample(size= 1, box_tmp$Race,prob=box_tmp$toc),game_id=gid))
