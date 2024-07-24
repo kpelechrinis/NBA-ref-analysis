@@ -131,12 +131,12 @@ for (b in 1:100){
   bw_ns = length(which(tech_sim.df$ref_race=="black" & tech_sim.df$p_race == "white" & tech_sim.df$game_id %in% games_added))
 
 
-  ww_sim[b] = 48*ww_ns/ww_mins
-  wb_sim[b] = 48*wb_ns/wb_mins
-  bb_sim[b] = 48*bb_ns/bb_mins
-  bw_sim[b] = 48*bw_ns/bw_mins
-  same_sim[b] = 48*(bb_ns+ww_ns)/(bb_mins+ww_mins)
-  diff_sim[b] = 48*(bw_ns+wb_ns)/(bw_mins+wb_mins)
+  ww_sim[b] = 48*ww_ns/ww_min
+  wb_sim[b] = 48*wb_ns/wb_min
+  bb_sim[b] = 48*bb_ns/bb_min
+  bw_sim[b] = 48*bw_ns/bw_min
+  same_sim[b] = 48*(bb_ns+ww_ns)/(bb_mins+ww_min)
+  diff_sim[b] = 48*(bw_ns+wb_ns)/(bw_mins+wb_min)
 }
 
 dat = data.frame(g=diff_sim-same_sim)
